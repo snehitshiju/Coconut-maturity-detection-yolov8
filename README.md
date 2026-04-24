@@ -25,32 +25,7 @@ Model Size	6.2 MB
 Parameters	~3 Million
 CPU Inference	~2.1 ms
 GPU Inference	<1 ms
-📂 Project Structure
-CocoVision/
-│
-├── app.py                  # Flask backend server
-├── detect.py               # YOLOv8 detection engine
-├── data.yaml               # Dataset configuration file
-│
-├── runs/
-│   └── detect/
-│       └── coconut_model/
-│           └── weights/
-│               └── best.pt # Trained model weights
-│
-├── dataset/
-│   ├── train/
-│   ├── valid/
-│   └── test/
-│
-├── static/
-│   ├── uploads/
-│   └── results/
-│
-├── templates/
-│   └── index.html
-│
-└── README.md
+
 ⚙️ Installation
 Step 1: Clone Repository
 git clone https://github.com/yourusername/CocoVision.git
