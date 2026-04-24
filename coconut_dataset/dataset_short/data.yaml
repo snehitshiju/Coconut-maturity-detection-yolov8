@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 3
+names: ['Mature', 'Potential', 'Premature']
+
+roboflow:
+  workspace: coconut-maturity-detection
+  project: coconut-maturity-detection
+  version: 7
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/coconut-maturity-detection/coconut-maturity-detection/dataset/7

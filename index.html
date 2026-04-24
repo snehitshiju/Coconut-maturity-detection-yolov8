@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CocoVision — Maturity Detection</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #0a0f0a;
+      --surface:   #111811;
+      --card:      #151f14;
+      --border:    #1e2e1c;
+      --accent:    #4cff72;
+      --accent2:   #a8ff3e;
+      --amber:     #ffb830;
+      --red:       #ff5252;
+      --text:      #e8f0e6;
+      --muted:     #6b7f69;
+      --font-head: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(76,255,114,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(76,255,114,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 500px;
+      background: radial-gradient(ellipse, rgba(76,255,114,0.07) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    header {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 48px;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      background: rgba(10,15,10,0.7);
+    }
+
+    .logo { display: flex; align-items: center; gap: 12px; }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    .logo-text {
+      font-family: var(--font-head);
+      font-weight: 800; font-size: 20px;
+      letter-spacing: -0.5px; color: var(--text);
+    }
+
+    .logo-text span { color: var(--accent); }
+
+    .header-badge {
+      font-size: 12px; font-weight: 500; color: var(--accent);
+      background: rgba(76,255,114,0.08);
+      border: 1px solid rgba(76,255,114,0.2);
+      padding: 5px 12px; border-radius: 20px; letter-spacing: 0.5px;
+    }
+
+    .hero {
+      position: relative; z-index: 10;
+      text-align: center; padding: 64px 24px 48px;
+    }
+
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; font-weight: 500; color: var(--accent);
+      letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px;
+    }
+
+    .hero-eyebrow::before, .hero-eyebrow::after {
+      content: ''; display: block;
+      width: 24px; height: 1px;
+      background: var(--accent); opacity: 0.5;
+    }
+
+    .hero h1 {
+      font-family: var(--font-head);
+      font-size: clamp(36px, 5vw, 64px);
+      font-weight: 800; line-height: 1.05;
+      letter-spacing: -2px; color: var(--text); margin-bottom: 16px;
+    }
+
+    .hero h1 em { font-style: normal; color: var(--accent); }
+
+    .hero p {
+      font-size: 16px; color: var(--muted); font-weight: 300;
+      max-width: 480px; margin: 0 auto; line-height: 1.7;
+    }
+
+    .main {
+      position: relative; z-index: 10;
+      max-width: 1100px; margin: 0 auto;
+      padding: 0 24px 80px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px; overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 20px 24px 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .panel-title {
+      font-family: var(--font-head); font-size: 13px; font-weight: 600;
+      letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted);
+    }
+
+    .panel-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+
+    .panel-dot.active {
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .upload-zone {
+      margin: 20px 24px;
+      border: 1.5px dashed var(--border);
+      border-radius: 14px; padding: 40px 24px;
+      text-align: center; cursor: pointer; transition: all 0.2s ease;
+    }
+
+    .upload-zone:hover { border-color: var(--accent); background: rgba(76,255,114,0.03); }
+    .upload-zone.dragover { border-color: var(--accent); background: rgba(76,255,114,0.06); transform: scale(1.01); }
+
+    #file-input { display: none; }
+
+    .upload-icon {
+      width: 56px; height: 56px; margin: 0 auto 16px;
+      background: rgba(76,255,114,0.08);
+      border: 1px solid rgba(76,255,114,0.15);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center; font-size: 24px;
+    }
+
+    .upload-title { font-family: var(--font-head); font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .upload-sub { font-size: 13px; color: var(--muted); }
+    .upload-sub strong { color: var(--accent); font-weight: 500; }
+
+    #preview-box { display: none; margin: 0 24px 20px; }
+
+    #preview-box img {
+      width: 100%; max-height: 260px; object-fit: cover;
+      border-radius: 12px; border: 1px solid var(--border);
+    }
+
+    .preview-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 10px; padding: 8px 12px;
+      background: var(--surface); border-radius: 8px; border: 1px solid var(--border);
+    }
+
+    .preview-filename { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+    .preview-change { font-size: 12px; color: var(--accent); cursor: pointer; white-space: nowrap; font-weight: 500; }
+
+    .btn-detect {
+      display: none;
+      width: calc(100% - 48px); margin: 0 24px 24px; padding: 14px;
+      background: var(--accent); color: #0a0f0a;
+      font-family: var(--font-head); font-size: 14px; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+      border: none; border-radius: 12px; cursor: pointer;
+      transition: all 0.2s ease; position: relative; overflow: hidden;
+    }
+
+    .btn-detect::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+    }
+
+    .btn-detect:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(76,255,114,0.25); }
+    .btn-detect:active { transform: translateY(0); }
+
+    #loading {
+      display: none; margin: 0 24px 24px; padding: 20px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; text-align: center;
+    }
+
+    .loading-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 12px; }
+
+    .loading-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 2px;
+      animation: loadbar 1.5s ease-in-out infinite;
+    }
+
+    @keyframes loadbar {
+      0% { width: 0%; margin-left: 0%; }
+      50% { width: 60%; margin-left: 20%; }
+      100% { width: 0%; margin-left: 100%; }
+    }
+
+    .loading-text { font-size: 13px; color: var(--muted); }
+    .loading-text span { color: var(--accent); font-weight: 500; }
+
+    #results-panel { display: flex; flex-direction: column; }
+
+    .result-images { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 24px 0; }
+
+    .result-img-box {
+      position: relative; border-radius: 12px; overflow: hidden;
+      border: 1px solid var(--border); aspect-ratio: 1;
+    }
+
+    .result-img-box img { width: 100%; height: 100%; object-fit: cover; }
+
+    .result-img-label {
+      position: absolute; bottom: 8px; left: 8px;
+      font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+      color: var(--text); background: rgba(10,15,10,0.8);
+      padding: 3px 8px; border-radius: 4px; backdrop-filter: blur(4px);
+    }
+
+    .det-cards { display: flex; flex-direction: column; gap: 10px; margin: 16px 24px 24px; flex: 1; }
+
+    .det-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px;
+      display: grid; grid-template-columns: auto 1fr auto;
+      align-items: center; gap: 14px; transition: border-color 0.2s;
+    }
+
+    .det-card:hover { border-color: rgba(76,255,114,0.2); }
+
+    .det-indicator { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    .det-card.mature    .det-indicator { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .det-card.potential .det-indicator { background: var(--amber);  box-shadow: 0 0 8px var(--amber); }
+    .det-card.premature .det-indicator { background: var(--red);    box-shadow: 0 0 8px var(--red); }
+
+    .det-label { font-family: var(--font-head); font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+
+    .det-card.mature    .det-label { color: var(--accent); }
+    .det-card.potential .det-label { color: var(--amber); }
+    .det-card.premature .det-label { color: var(--red); }
+
+    .det-timeline { font-size: 12px; color: var(--muted); line-height: 1.4; }
+
+    .det-conf { font-family: var(--font-head); font-size: 18px; font-weight: 700; color: var(--text); white-space: nowrap; }
+    .det-conf-label { font-size: 10px; color: var(--muted); text-align: right; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .empty-state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 48px 24px; text-align: center; color: var(--muted); gap: 12px;
+    }
+
+    .empty-icon { font-size: 40px; opacity: 0.5; }
+    .empty-text { font-size: 14px; line-height: 1.7; }
+    .no-detect { text-align: center; color: var(--muted); padding: 24px; font-size: 14px; }
+
+    footer {
+      position: relative; z-index: 10;
+      text-align: center; padding: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 12px; color: var(--muted);
+    }
+
+    footer span { color: var(--accent); }
+
+    @media (max-width: 768px) {
+      header { padding: 16px 20px; }
+      .main { grid-template-columns: 1fr; padding: 0 16px 60px; }
+      .hero { padding: 40px 16px 32px; }
+    }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .hero, .main { animation: fadeUp 0.6s ease both; }
+    .main { animation-delay: 0.15s; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🥥</div>
+    <div class="logo-text">Coco<span>Vision</span></div>
+  </div>
+  <div class="header-badge">YOLOv8 · Powered</div>
+</header>
+
+<div class="hero">
+  <div class="hero-eyebrow">AI-Powered Agriculture</div>
+  <h1>Coconut <em>Maturity</em><br>Detection System</h1>
+  <p>Upload a coconut image and get instant maturity classification with harvest timeline predictions.</p>
+</div>
+
+<div class="main">
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Upload Image</div>
+      <div class="panel-dot active" id="upload-dot"></div>
+    </div>
+
+    <div class="upload-zone" id="upload-zone"
+         onclick="document.getElementById('file-input').click()"
+         ondragover="handleDragOver(event)"
+         ondragleave="handleDragLeave(event)"
+         ondrop="handleDrop(event)">
+      <input type="file" id="file-input" accept=".jpg,.jpeg,.png" onchange="previewImage(event)" />
+      <div class="upload-icon">📷</div>
+      <div class="upload-title">Drop your image here</div>
+      <div class="upload-sub">or <strong>click to browse</strong> · JPG, JPEG, PNG</div>
+    </div>
+
+    <div id="preview-box">
+      <img id="preview-img" src="" alt="Preview" />
+      <div class="preview-meta">
+        <span class="preview-filename" id="preview-name"></span>
+        <span class="preview-change" onclick="document.getElementById('file-input').click()">Change image</span>
+      </div>
+    </div>
+
+    <button class="btn-detect" id="detect-btn" onclick="runDetection()">
+      ⚡ Analyse Maturity
+    </button>
+
+    <div id="loading">
+      <div class="loading-bar"><div class="loading-fill"></div></div>
+      <div class="loading-text">Running <span>YOLOv8</span> inference...</div>
+    </div>
+  </div>
+
+  <div class="panel" id="results-panel">
+    <div class="panel-header">
+      <div class="panel-title">Detection Results</div>
+      <div class="panel-dot" id="result-dot"></div>
+    </div>
+
+    <div id="empty-state" class="empty-state">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-text">Upload a coconut image and click<br>
+        <strong style="color:var(--text)">Analyse Maturity</strong> to see results here.
+      </div>
+    </div>
+
+    <div id="results-content" style="display:none;">
+      <div class="result-images">
+        <div class="result-img-box">
+          <img id="original-img" src="" alt="Original" />
+          <div class="result-img-label">Original</div>
+        </div>
+        <div class="result-img-box">
+          <img id="result-img" src="" alt="Result" />
+          <div class="result-img-label">Detected</div>
+        </div>
+      </div>
+      <div class="det-cards" id="det-cards"></div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  CocoVision · Built with <span>YOLOv8</span> + Flask · Localhost
+</footer>
+
+<script>
+  let selectedFile = null;
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    document.getElementById('upload-zone').classList.add('dragover');
+  }
+
+  function handleDragLeave(e) {
+    document.getElementById('upload-zone').classList.remove('dragover');
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('upload-zone').classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  }
+
+  function previewImage(event) {
+    const file = event.target.files[0];
+    if (file) processFile(file);
+  }
+
+  function processFile(file) {
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      document.getElementById('preview-img').src = e.target.result;
+      document.getElementById('preview-name').textContent = file.name;
+      document.getElementById('preview-box').style.display = 'block';
+      document.getElementById('detect-btn').style.display = 'block';
+      document.getElementById('upload-zone').style.display = 'none';
+      document.getElementById('results-content').style.display = 'none';
+      document.getElementById('result-dot').classList.remove('active');
+      document.getElementById('empty-state').style.display = 'flex';
+      document.getElementById('empty-state').innerHTML = `
+        <div class="empty-icon">🔍</div>
+        <div class="empty-text">Upload a coconut image and click<br>
+        <strong style="color:var(--text)">Analyse Maturity</strong> to see results here.</div>`;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function runDetection() {
+    if (!selectedFile) return;
+
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('detect-btn').style.display = 'none';
+    document.getElementById('empty-state').style.display = 'none';
+    document.getElementById('results-content').style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('image', selectedFile);
+
+    try {
+      const response = await fetch('/detect', { method: 'POST', body: formData });
+      const data = await response.json();
+
+      document.getElementById('loading').style.display = 'none';
+
+      if (data.error === 'no_coconut') {
+        document.getElementById('detect-btn').style.display = 'block';
+        document.getElementById('empty-state').style.display = 'flex';
+        document.getElementById('empty-state').innerHTML = `
+          <div class="empty-icon">🚫</div>
+          <div class="empty-text">
+            <strong style="color:var(--red);font-size:16px;">No coconut detected!</strong><br><br>
+            Please upload a coconut image only.<br>
+            <span style="font-size:12px;color:var(--muted);">
+              This system only analyses coconut maturity.
+            </span>
+          </div>`;
+        document.getElementById('result-dot').classList.remove('active');
+        return;
+      }
+
+      if (data.error) {
+        alert('Error: ' + data.error);
+        document.getElementById('detect-btn').style.display = 'block';
+        document.getElementById('empty-state').style.display = 'flex';
+        return;
+      }
+
+      document.getElementById('original-img').src = document.getElementById('preview-img').src;
+      document.getElementById('result-img').src = '/' + data.result_image + '?t=' + Date.now();
+      document.getElementById('empty-state').style.display = 'none';
+      document.getElementById('results-content').style.display = 'block';
+      document.getElementById('result-dot').classList.add('active');
+
+      const cards = document.getElementById('det-cards');
+      cards.innerHTML = '';
+
+      if (data.detections.length === 0) {
+        cards.innerHTML = '<div class="no-detect">No coconuts detected. Try a clearer image.</div>';
+      } else {
+        data.detections.forEach(d => {
+          cards.innerHTML += `
+            <div class="det-card ${d.card_class}">
+              <div class="det-indicator"></div>
+              <div class="det-info">
+                <div class="det-label">${d.label}</div>
+                <div class="det-timeline">${d.timeline}</div>
+              </div>
+              <div>
+                <div class="det-conf">${d.confidence}%</div>
+                <div class="det-conf-label">Confidence</div>
+              </div>
+            </div>`;
+        });
+      }
+
+      document.getElementById('detect-btn').style.display = 'block';
+
+    } catch (err) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('detect-btn').style.display = 'block';
+      document.getElementById('empty-state').style.display = 'flex';
+      alert('Something went wrong. Make sure Flask is running.');
+    }
+  }
+</script>
+</body>
+</html>
